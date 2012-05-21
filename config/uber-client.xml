@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans-2.0.xsd"
+	default-init-method="init">
+
+	<import resource="wedjat-spring.xml" />
+	<import resource="avrs-spring.xml" />
+	<import resource="pgclient-spring.xml" />
+
+
+	<bean id="postgres-ds" class="org.postgresql.ds.PGPoolingDataSource">
+		<property name="serverName" value="www" />
+		<property name="databaseName" value="aprs" />
+		<property name="portNumber" value="5432" />
+		<property name="user" value="aprs" />
+		<property name="password" value="aprspass" />
+		<property name="dataSourceName" value="postgres" />
+		<property name="initialConnections" value="1" />
+		<property name="maxConnections" value="10" />
+	</bean>
+
+
+	<bean id="tcpClient" class="net.ab0oo.aprs.clients.TcpClient">
+		<property name="server" value="rotate.aprs.net" />
+		<property name="port" value="10152" />
+		<property name="user" value="ab0oo-p" />
+		<property name="pass" value="19951" />
+		<property name="version" value="Wedjat 0.2" />
+		<property name="filter" value="" />
+		<property name="dumpErrors" value="false" />
+		<property name="processors">
+			<list>
+<!--				<ref bean="pgClient" /> -->
+				<ref bean="avrsClient" />
+<!--				<ref bean="wedjatClient" /> -->
+			</list>
+		</property>
+
+	</bean>
+
+</beans>

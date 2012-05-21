@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans-2.0.xsd"
+	default-init-method="init">
+
+	<import resource="avrs-data.xml" />
+
+	<bean id="avrsClient" class="net.ab0oo.aprs.avrs.AVRSServer">
+		<property name="dao" ref="avrsDAO"/>
+		<property name="maxLinkDistance" value="50"/>
+		<property name="staleMs" value="900000"/>
+	</bean>
+
+</beans>

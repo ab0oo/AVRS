@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans-2.0.xsd">
+
+  <bean id="monitoredStationDAO" class="net.ab0oo.aprs.wedjat.db.jdbc.JdbcMonitoredStationDAO">
+    <property name="dataSource" ref="postgres-ds"/>
+  </bean>
+
+  <bean id="notificationAddressDAO" class="net.ab0oo.aprs.wedjat.db.jdbc.JdbcNotificationAddressDAO">
+    <property name="dataSource" ref="postgres-ds"/>
+  </bean>
+
+  <bean id="notificationDAO" class="net.ab0oo.aprs.wedjat.db.jdbc.JdbcNotificationDAO">
+    <property name="dataSource" ref="postgres-ds"/>
+  </bean>
+
+  <bean id="zoneDAO" class="net.ab0oo.aprs.wedjat.db.jdbc.JdbcZoneDAO">
+    <property name="dataSource" ref="postgres-ds"/>
+  </bean>
+
+  <bean id="ruleDAO" class="net.ab0oo.aprs.wedjat.db.jdbc.JdbcRuleDAO">
+    <property name="dataSource" ref="postgres-ds"/>
+  </bean>
+
+  <bean id="userDAO" class="net.ab0oo.aprs.wedjat.db.jdbc.JdbcUserDAO">
+    <property name="dataSource" ref="postgres-ds"/>
+  </bean>
+
+  <bean id="alertHistoryDAO" class="net.ab0oo.aprs.wedjat.db.jdbc.JdbcAlertHistoryDAO">
+    <property name="dataSource" ref="postgres-ds"/>
+  </bean>
+
+</beans>

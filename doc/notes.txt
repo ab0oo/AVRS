@@ -1,0 +1,11 @@
+For complete link establishment, follow these steps:
+
+find the best target node:  look for Kenwood/Yaesu APRS radios, software stations (UIView, APRSCEIS, etc)
+determine closest EL and IRLP nodes to originator
+if nodes are available:
+determine closest EL and IRLP nodes to destination
+calculate "link budget" by determining best overall link path
+notify caller of receiver's node type/number
+send objects of appropriate node types to both ends
+notify destination station of callers intent and send QSY note
+notify sender of any ACKs received 

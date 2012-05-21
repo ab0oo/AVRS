@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans-2.0.xsd">
+
+  <bean id="wedjatService" class="net.ab0oo.aprs.wedjat.service.WedjatServiceImpl">
+  	<property name="monitoredStationDAO" ref="monitoredStationDAO"/>
+  	<property name="zoneDAO" ref="zoneDAO"/>
+  	<property name="ruleDAO" ref="ruleDAO"/>
+  	<property name="alertHistoryDAO" ref="alertHistoryDAO"/>
+  	<property name="userDAO" ref="userDAO"/>
+  	<property name="notificationAddressDAO" ref="notificationAddressDAO"/>
+  	<property name="notificationDAO" ref="notificationDAO"/>
+  </bean>
+  
+</beans>

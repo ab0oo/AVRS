@@ -1,0 +1,3 @@
+There are a few third-party packages required to make all this work.
+Specifically, I use the Apache Commons libraries to do some configuration stuff
+I also use the XStream libraries to parse the EchoLink and IRLP node lists

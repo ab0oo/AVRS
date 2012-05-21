@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans-2.0.xsd">
+  <bean name="WebServer" class="org.mortbay.jetty.Server" init-method="start">
+    <property name="connectors">
+      <list>
+        <bean name="LocalSocket" class="org.mortbay.jetty.nio.SelectChannelConnector">
+          <property name="host" value="localhost"/>
+          <property name="port" value="8081"/>
+        </bean>
+      </list>
+    </property>
+    <property name="handlers">
+      <list>
+        <bean class="org.mortbay.jetty.servlet.Context">
+          <property name="contextPath" value="/"/>
+          <property name="sessionHandler">
+            <bean class="org.mortbay.jetty.servlet.SessionHandler"/>
+          </property>
+          <property name="resourceBase" value="/var/www"/>
+          <property name="servletHandler">
+            <bean class="org.mortbay.jetty.servlet.ServletHandler">
+              <property name="servlets"> <!-- servlet definition -->
+                <list>
+                  <!-- default servlet -->
+                  <bean class="org.mortbay.jetty.servlet.ServletHolder">
+                    <property name="name" value="DefaultServlet"/>
+                    <property name="servlet">
+                      <bean class="org.mortbay.jetty.servlet.DefaultServlet"/>
+                    </property>
+                    <property name="initParameters">
+                      <map>
+                        <entry key="resourceBase" value="/home/johng/public_html"/>
+                      </map>
+                    </property>
+                  </bean>
+                </list>
+              </property>
+              <property name="servletMappings">
+                <list><!-- servlet mapping -->
+                  <bean class="org.mortbay.jetty.servlet.ServletMapping">
+                    <property name="pathSpecs">
+                      <list><value>/</value></list>
+                    </property>
+                    <property name="servletName" value="DefaultServlet"/>
+                  </bean>
+                </list>
+              </property>
+            </bean>
+          </property>
+        </bean>
+      <!-- log handler -->
+        <bean class="org.mortbay.jetty.handler.RequestLogHandler">
+          <property name="requestLog">
+            <bean class="org.mortbay.jetty.NCSARequestLog">
+              <property name="append" value="true"/>
+              <property name="filename" value="/home/johng/jetty/request.log.yyyy_mm_dd"/>
+              <property name="extended" value="true"/>
+              <property name="retainDays" value="999"/>
+              <property name="filenameDateFormat" value="yyyy-MM-dd"/>
+            </bean>
+          </property>
+        </bean>
+      </list>
+    </property>
+  </bean>
+</beans>

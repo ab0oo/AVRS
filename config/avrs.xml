@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<avrs-config>
+	<aprsis>
+		<host>localhost</host>
+		<port>14580</port>
+		<callsign>AB0OO-D</callsign>
+		<password>19951</password>
+	</aprsis>
+	<postgres>
+		<host>www</host>
+		<username>aprs</username>
+		<dbname>aprs</dbname>
+		<password>aprspass</password>
+	</postgres>
+	<avrs>
+		<staleMs>3600000</staleMs>
+		<maxLinkDistance>50.0</maxLinkDistance>
+	</avrs>
+</avrs-config>	 
