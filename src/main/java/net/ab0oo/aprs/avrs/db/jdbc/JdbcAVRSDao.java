@@ -34,7 +34,7 @@ import net.ab0oo.aprs.avrs.LinkNode;
 import net.ab0oo.aprs.avrs.db.AVRSDao;
 import net.ab0oo.aprs.avrs.models.AllPositionEntry;
 import net.ab0oo.aprs.parser.Position;
-import net.ab0oo.aprs.wedjat.models.ReferencePoint;
+import net.ab0oo.aprs.avrs.models.ReferencePoint;
 
 import org.postgis.Geometry;
 import org.postgis.PGgeometry;

@@ -55,7 +55,7 @@ import net.ab0oo.aprs.parser.InformationField;
 import net.ab0oo.aprs.parser.MessagePacket;
 import net.ab0oo.aprs.parser.Parser;
 import net.ab0oo.aprs.parser.Utilities;
-import net.ab0oo.aprs.wedjat.models.ReferencePoint;
+import net.ab0oo.aprs.avrs.models.ReferencePoint;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;

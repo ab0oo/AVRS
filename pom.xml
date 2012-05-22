@@ -1,6 +1,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>AVRS</groupId>
+  <groupId>net.ab0oo.aprs</groupId>
   <artifactId>AVRS</artifactId>
   <version>0.0.1-SNAPSHOT</version>
 
@@ -41,4 +41,79 @@
 
   </build>
 
+  <dependencies>
+  	<dependency>
+  		<groupId>net.ab0oo.aprs</groupId>
+  		<artifactId>javAPRSlib</artifactId>
+  		<version>0.0.1-SNAPSHOT</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.springframework</groupId>
+  		<artifactId>spring</artifactId>
+  		<version>2.5.6.SEC03</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.springframework</groupId>
+  		<artifactId>spring-beans</artifactId>
+  		<version>3.1.1.RELEASE</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>javax.jms</groupId>
+  		<artifactId>jms</artifactId>
+  		<version>1.1</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>com.refractions</groupId>
+  		<artifactId>postgis-jdbc</artifactId>
+  		<version>1.5.0SVN</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>postgresql</groupId>
+  		<artifactId>postgresql</artifactId>
+  		<version>9.1-901-1.jdbc4</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.springframework</groupId>
+  		<artifactId>spring-web</artifactId>
+  		<version>3.1.1.RELEASE</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>javax.servlet</groupId>
+  		<artifactId>javax.servlet-api</artifactId>
+  		<version>3.0.1</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.springframework</groupId>
+  		<artifactId>spring-core</artifactId>
+  		<version>3.1.1.RELEASE</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.springframework</groupId>
+  		<artifactId>spring-webmvc</artifactId>
+  		<version>3.1.1.RELEASE</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>commons-configuration</groupId>
+  		<artifactId>commons-configuration</artifactId>
+  		<version>1.8</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>com.kenai.nbpwr</groupId>
+  		<artifactId>com-sun-syndication-feed</artifactId>
+  		<version>1.0-201002241208</version>
+  		<type>nbm</type>
+  	</dependency>
+  	<dependency>
+    	<groupId>com.google.publicalerts</groupId>
+    	<artifactId>cap</artifactId>
+    	<version>0.0.1r3</version>
+    	<scope>system</scope>
+    	<systemPath>${project.basedir}/lib/cap-library-r3.jar</systemPath>
+</dependency>
+  	<dependency>
+  		<groupId>jetty</groupId>
+  		<artifactId>org.mortbay.jetty</artifactId>
+  		<version>6.0.0alpha3</version>
+  	</dependency>
+  </dependencies>
 </project>
