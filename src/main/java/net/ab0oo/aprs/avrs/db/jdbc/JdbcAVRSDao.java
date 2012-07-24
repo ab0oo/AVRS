@@ -42,32 +42,31 @@ import org.postgis.Point;
 
 /**
  * @author johng
- *
+ * 
  */
 public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
-    
+
 	@Override
 	public TreeSet<LinkNode> getNodes(String callsign) {
-    	TreeSet<LinkNode> nodes = new TreeSet<LinkNode>();
+		TreeSet<LinkNode> nodes = new TreeSet<LinkNode>();
 		Connection dbconn = null;
 		PreparedStatement findClosest = null;
 		ResultSet rs = null;
-		int nodeId=0;
+		int nodeId = 0;
 		try {
 			dbconn = ds.getConnection();
-        	findClosest = dbconn.prepareStatement(
-        			"select ST_distance_sphere(a.position, e.position)/1609 as distance, e.callsign, e.node, " +
-        			"astext(e.position), e.nodetype, e.tone, e.frequency" +
-        			" from all_positions a, node_positions e " +
-        			"where upper(a.callsign)=? and ST_distance_sphere(a.position, e.position)/1609 < 50 " +
-        			"order by distance asc"
-        			 );
+			findClosest = dbconn
+					.prepareStatement("select ST_distance_sphere(a.position, e.the_geom)/1609 as distance, e.callsign, e.node, "
+							+ "astext(e.the_geom), e.nodetype, e.tone, e.frequency"
+							+ " from all_positions a, node_positions e "
+							+ "where upper(a.callsign)=? and ST_distance_sphere(a.position, e.the_geom)/1609 < 50 "
+							+ "order by distance asc");
 
 			findClosest.setString(1, callsign.toUpperCase());
 			rs = findClosest.executeQuery();
-			while ( rs.next() ) {
+			while (rs.next()) {
 				String astext = rs.getString("astext");
-				astext = astext.substring(6,astext.length()-1);
+				astext = astext.substring(6, astext.length() - 1);
 				String[] lonlat = astext.split(" ");
 				double lon = Double.parseDouble(lonlat[0]);
 				double lat = Double.parseDouble(lonlat[1]);
@@ -81,16 +80,19 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 				node.setDistance(rs.getDouble("distance"));
 				nodes.add(node);
 			}
-		} catch ( SQLException sqlex ) {
-			System.err.println("Unable to fetch closest gateway to "+callsign+":  "+sqlex);
+		} catch (SQLException sqlex) {
+			System.err.println("Unable to fetch closest gateway to " + callsign + ":  " + sqlex);
 			return null;
-		} catch ( NumberFormatException nfe ) {
-			System.err.println("Unable to read lat/lon for node #"+nodeId );
+		} catch (NumberFormatException nfe) {
+			System.err.println("Unable to read lat/lon for node #" + nodeId);
 		} finally {
-			try { dbconn.close(); } catch ( Exception ex ) {}
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
 		}
 		return nodes;
-    }
+	}
 
 	@Override
 	public Date getLatestPosition(String callsign) {
@@ -100,34 +102,36 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 		ResultSet rs = null;
 		try {
 			dbconn = ds.getConnection();
-        	findLatestPosition = dbconn.prepareStatement("select toi from all_positions where upper(callsign)=?");
-        	findLatestPosition.setString(1, callsign.toUpperCase());
+			findLatestPosition = dbconn.prepareStatement("select toi from all_positions where upper(callsign)=?");
+			findLatestPosition.setString(1, callsign.toUpperCase());
 			rs = findLatestPosition.executeQuery();
 			while (rs.next()) {
 				Timestamp ts = rs.getTimestamp("toi");
 				lastPositionTimestamp = new Date(ts.getTime());
 			}
 		} catch (SQLException sqlex) {
-			System.err.println("Unable to fetch last position timestamp for "
-					+ callsign + ":  " + sqlex);
-	    } finally {
-	        try { dbconn.close(); } catch ( Exception ex ) {}
-	    }
-		System.out.println("Value of last TOI for "+callsign+" is "+lastPositionTimestamp);
+			System.err.println("Unable to fetch last position timestamp for " + callsign + ":  " + sqlex);
+		} finally {
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
+		}
+		System.out.println("Value of last TOI for " + callsign + " is " + lastPositionTimestamp);
 		return lastPositionTimestamp;
 
 	}
-	
+
 	@Override
-    public AllPositionEntry getPosition( String callsign ) {
+	public AllPositionEntry getPosition(String callsign) {
 		AllPositionEntry entry = new AllPositionEntry();
 		Connection dbconn = null;
 		PreparedStatement findPosition = null;
 		ResultSet rs = null;
 		try {
 			dbconn = ds.getConnection();
-        	findPosition = dbconn.prepareStatement("select * from all_positions where upper(callsign)=?");
-        	findPosition.setString(1, callsign.toUpperCase());
+			findPosition = dbconn.prepareStatement("select * from all_positions where upper(callsign)=?");
+			findPosition.setString(1, callsign.toUpperCase());
 			rs = findPosition.executeQuery();
 			while (rs.next()) {
 				entry.setDestination(rs.getString("destination"));
@@ -135,12 +139,12 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 				entry.setCallsign(callsign);
 				Position p = new Position();
 				p.setSymbolTable(rs.getString("symbol_table").charAt(0));
-				p.setSymbolCode((char)rs.getString("symbol").charAt(0));
+				p.setSymbolCode((char) rs.getString("symbol").charAt(0));
 				p.setAltitude(rs.getInt("altitude"));
 				p.setPositionAmbiguity(rs.getInt("pos_ambiguity"));
-                Timestamp ts = rs.getTimestamp("toi");
-                p.setTimestamp(new Date(ts.getTime()));
-				PGgeometry geom = (PGgeometry)rs.getObject("position");
+				Timestamp ts = rs.getTimestamp("toi");
+				p.setTimestamp(new Date(ts.getTime()));
+				PGgeometry geom = (PGgeometry) rs.getObject("position");
 				Geometry g = geom.getGeometry();
 				Point pnt = g.getPoint(0);
 				p.setLongitude(pnt.getX());
@@ -148,24 +152,26 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 				entry.setPosition(p);
 			}
 		} catch (SQLException sqlex) {
-			System.err.println("Unable to fetch last position timestamp for "
-					+ callsign + ":  " + sqlex);
+			System.err.println("Unable to fetch last position timestamp for " + callsign + ":  " + sqlex);
 		} finally {
-			try { dbconn.close(); } catch ( Exception ex ) {}
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
 		}
 		return entry;
 	}
 
 	@Override
-    public List<AllPositionEntry> getPositions( String callsign ) {
+	public List<AllPositionEntry> getPositions(String callsign) {
 		List<AllPositionEntry> positionList = new ArrayList<AllPositionEntry>();
 		Connection dbconn = null;
 		PreparedStatement findPosition = null;
 		ResultSet rs = null;
 		try {
 			dbconn = ds.getConnection();
-        	findPosition = dbconn.prepareStatement("select * from all_positions where upper(callsign)=?");
-        	findPosition.setString(1, callsign.toUpperCase());
+			findPosition = dbconn.prepareStatement("select * from all_positions where upper(callsign)=?");
+			findPosition.setString(1, callsign.toUpperCase());
 			rs = findPosition.executeQuery();
 			while (rs.next()) {
 				AllPositionEntry entry = new AllPositionEntry();
@@ -174,10 +180,10 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 				entry.setCallsign(callsign);
 				Position p = new Position();
 				p.setSymbolTable(rs.getString("symbol_table").charAt(0));
-				p.setSymbolCode((char)rs.getString("symbol").charAt(0));
+				p.setSymbolCode((char) rs.getString("symbol").charAt(0));
 				p.setAltitude(rs.getInt("altitude"));
 				p.setPositionAmbiguity(rs.getInt("pos_ambiguity"));
-				PGgeometry geom = (PGgeometry)rs.getObject("position");
+				PGgeometry geom = (PGgeometry) rs.getObject("position");
 				Geometry g = geom.getGeometry();
 				Point pnt = g.getPoint(0);
 				p.setLongitude(pnt.getX());
@@ -186,16 +192,47 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 				positionList.add(entry);
 			}
 		} catch (SQLException sqlex) {
-			System.err.println("Unable to fetch last position timestamp for "
-					+ callsign + ":  " + sqlex);
+			System.err.println("Unable to fetch last position timestamp for " + callsign + ":  " + sqlex);
 		} finally {
-			try { dbconn.close(); } catch ( Exception ex ) {}
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
 		}
 		return positionList;
 	}
 
-	/* (non-Javadoc)
-	 * @see net.ab0oo.aprs.avrs.db.AVRSDao#saveLatestPosition(net.ab0oo.aprs.avrs.models.AllPositionEntry)
+	private PreparedStatement populateInsertStatement(PreparedStatement ps, AllPositionEntry entry, PGgeometry geom) {
+		try {
+			ps.setString(1, entry.getCallsign());
+			ps.setString(2, entry.getBaseCall());
+			ps.setString(3, entry.getSsid());
+			ps.setString(4, entry.getDestination());
+			ps.setTimestamp(5, new java.sql.Timestamp(entry.getToi().getTime()));
+			ps.setString(6, entry.getSymbolTable().toString());
+			ps.setString(7, entry.getSymbol().toString());
+			ps.setString(8, entry.getIgate());
+			ps.setObject(9, geom);
+			ps.setInt(10, entry.getAltitude());
+			ps.setInt(11, entry.getPositionAmbiguity());
+			ps.setArray(12, new PostgreSQLTextArray(entry.getDigis()));
+			int result = ps.executeUpdate();
+			if (result != 1) {
+				System.err.println("Error storing new position for " + entry.getCallsign());
+			}
+
+		} catch (SQLException sqlex) {
+			System.err.println("Error Populating a DB statement:  " + sqlex);
+		}
+		return ps;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * net.ab0oo.aprs.avrs.db.AVRSDao#saveLatestPosition(net.ab0oo.aprs.avrs
+	 * .models.AllPositionEntry)
 	 */
 	@Override
 	public void saveLatestPosition(AllPositionEntry entry) {
@@ -203,106 +240,206 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 		PreparedStatement updatePosition = null;
 		PreparedStatement insertPosition = null;
 		try {
-        	Point pnt = new Point(entry.getLongitude(), entry.getLatitude());
-        	PGgeometry geom = new PGgeometry(pnt);
-        	pnt.setSrid(4326);
-        	dbconn = ds.getConnection();
-        	updatePosition = dbconn.prepareStatement("update all_positions set destination=?, toi=?, symbol_table=?,"+
-        			"symbol=?, igate=?, altitude=?, pos_ambiguity=?, digis=?, position=? where upper(callsign) = ?");
-        	updatePosition.setString(1, entry.getDestination().toUpperCase());
-        	updatePosition.setTimestamp(2, new java.sql.Timestamp(entry.getToi().getTime()));
-        	updatePosition.setString(3, entry.getSymbolTable().toString());
-        	updatePosition.setString(4, entry.getSymbol().toString());
-        	updatePosition.setString(5, entry.getIgate());
-        	updatePosition.setInt(6, entry.getAltitude());
-        	updatePosition.setInt(7, entry.getPositionAmbiguity());
-        	updatePosition.setArray(8, new PostgreSQLTextArray(entry.getDigis()));
-        	updatePosition.setObject(9, geom);
-        	updatePosition.setString(10, entry.getCallsign().toUpperCase());
-        	int rows = updatePosition.executeUpdate();
-        	/*
- callsign      | character varying(10)    | not null
- basecall      | character(10)            | not null
- ssid          | character(3)             | not null
- destination   | character varying(10)    | not null
- toi           | timestamp with time zone | not null default now()
- symbol_table  | character(1)             | 
- symbol        | character(1)             | 
- igate         | character varying(11)    | 
- position      | geometry                 | 
- altitude      | integer                  | 
- pos_ambiguity | integer                  | 
- digis         | character(10)[]          | 
+			Point pnt = new Point(entry.getLongitude(), entry.getLatitude());
+			PGgeometry geom = new PGgeometry(pnt);
+			pnt.setSrid(4326);
+			dbconn = ds.getConnection();
+			updatePosition = dbconn.prepareStatement("update all_positions set destination=?, toi=?, symbol_table=?,"
+					+ "symbol=?, igate=?, altitude=?, pos_ambiguity=?, digis=?, position=? where upper(callsign) = ?");
+			updatePosition.setString(1, entry.getDestination().toUpperCase());
+			updatePosition.setTimestamp(2, new java.sql.Timestamp(entry.getToi().getTime()));
+			updatePosition.setString(3, entry.getSymbolTable().toString());
+			updatePosition.setString(4, entry.getSymbol().toString());
+			updatePosition.setString(5, entry.getIgate());
+			updatePosition.setInt(6, entry.getAltitude());
+			updatePosition.setInt(7, entry.getPositionAmbiguity());
+			updatePosition.setArray(8, new PostgreSQLTextArray(entry.getDigis()));
+			updatePosition.setObject(9, geom);
+			updatePosition.setString(10, entry.getCallsign().toUpperCase());
+			int rows = updatePosition.executeUpdate();
 
-        	 */
-        	if ( rows == 0 ) {
-        		insertPosition = dbconn.prepareStatement("insert into all_positions "+
-        				" values (?,?,?,?,?,?,?,?,?,?,?,? )");
-            	insertPosition.setString(1, entry.getCallsign());
-            	insertPosition.setString(2, entry.getBaseCall());
-            	insertPosition.setString(3,	entry.getSsid());
-            	insertPosition.setString(4, entry.getDestination());
-            	insertPosition.setTimestamp(5, new java.sql.Timestamp(entry.getToi().getTime()));
-            	insertPosition.setString(6, entry.getSymbolTable().toString());
-            	insertPosition.setString(7, entry.getSymbol().toString());
-            	insertPosition.setString(8, entry.getIgate());
-            	insertPosition.setObject(9, geom);
-            	insertPosition.setInt(10, entry.getAltitude());
-            	insertPosition.setInt(11, entry.getPositionAmbiguity());
-            	insertPosition.setArray(12, new PostgreSQLTextArray(entry.getDigis()));
-            	int result = insertPosition.executeUpdate();
-            	if ( result != 1 ) {
-            		System.err.println("Error storing new position for "+entry.getCallsign());
-            	}
-        	}
+			if (rows == 0) {
+				insertPosition = dbconn.prepareStatement("insert into all_positions "
+						+ " values (?,?,?,?,?,?,?,?,?,?,?,? )");
+				insertPosition = populateInsertStatement(insertPosition, entry, geom);
+				int result = insertPosition.executeUpdate();
+				if (result != 1) {
+					System.err.println("Error storing new position for " + entry.getCallsign());
+				}
+			}
 		} catch (SQLException sqlex) {
-			System.err.println("Unable to persist last position entry for "+entry.getCallsign()+" :"+ sqlex );
-			System.err.println(" Station was "+entry.getCallsign()+", or "+entry.getBaseCall()+" - "+entry.getSsid());
+			System.err.println("Unable to persist last position entry for " + entry.getCallsign() + " :" + sqlex);
+			System.err.println(" Station was " + entry.getCallsign() + ", or " + entry.getBaseCall() + " - "
+					+ entry.getSsid());
 		} finally {
-			try { dbconn.close(); } catch ( Exception ex ) {}
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
 		}
 	}
-	
-    /* (non-Javadoc)
-     * @see net.ab0oo.aprs.avrs.db.AVRSDao#saveLatestPosition(net.ab0oo.aprs.avrs.models.AllPositionEntry)
-     */
-    @Override
-    public void savePosition(AllPositionEntry entry) {
-        Connection dbconn = null;
-        PreparedStatement insertPosition = null;
-        try {
-            Point pnt = new Point(entry.getLongitude(), entry.getLatitude());
-            PGgeometry geom = new PGgeometry(pnt);
-            pnt.setSrid(4326);
-            dbconn = ds.getConnection();
-            insertPosition = dbconn.prepareStatement("insert into position_history "
-                    + " values (?,?,?,?,?,?,?,?,?,?,?,? )");
-            insertPosition.setString(1, entry.getCallsign());
-            insertPosition.setString(2, entry.getBaseCall());
-            insertPosition.setString(3, entry.getSsid());
-            insertPosition.setString(4, entry.getDestination());
-            insertPosition.setTimestamp(5, new java.sql.Timestamp(entry.getToi().getTime()));
-            insertPosition.setString(6, entry.getSymbolTable().toString());
-            insertPosition.setString(7, entry.getSymbol().toString());
-            insertPosition.setString(8, entry.getIgate());
-            insertPosition.setObject(9, geom);
-            insertPosition.setInt(10, entry.getAltitude());
-            insertPosition.setInt(11, entry.getPositionAmbiguity());
-            insertPosition.setArray(12, new PostgreSQLTextArray(entry.getDigis()));
-            int result = insertPosition.executeUpdate();
-            if (result != 1) {
-                System.err.println("Error storing new position for " + entry.getCallsign());
-            }
-        } catch (SQLException sqlex) {
-            System.err.println("Unable to persist last position entry for "+entry.getCallsign()+" :"+ sqlex );
-            System.err.println(" Station was "+entry.getCallsign()+", or "+entry.getBaseCall()+" - "+entry.getSsid());
-        } finally {
-            try { dbconn.close(); } catch ( Exception ex ) {}
-        }
-    }
 
-    @Override
-    public List<ReferencePoint> listClosestCities(Position position) {
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * net.ab0oo.aprs.avrs.db.AVRSDao#saveLatestPosition(net.ab0oo.aprs.avrs
+	 * .models.AllPositionEntry)
+	 */
+	@Override
+	public void saveLatestPositions(List<AllPositionEntry> entries) {
+		Connection dbconn = null;
+		PreparedStatement updatePosition = null;
+		PreparedStatement insertPosition = null;
+		Point pnt = null;
+		PGgeometry geom = null;
+		AllPositionEntry poisonedEntry = null;
+		int rows = 0;
+		int updates = 0, inserts = 0;
+		try {
+			System.out.print(new Date()+":  Updating " + entries.size() + " positions in the DB...");
+			dbconn = ds.getConnection();
+			updatePosition = dbconn.prepareStatement("update all_positions set destination=?, toi=?, symbol_table=?,"
+					+ "symbol=?, igate=?, altitude=?, pos_ambiguity=?, digis=?, position=? where upper(callsign) = ?");
+			insertPosition = dbconn.prepareStatement("insert into all_positions "
+					+ " values (?,?,?,?,?,?,?,?,?,?,?,? )");
+		} catch (SQLException sqlex) {
+			System.err.println("Unable to prepare statements for DB updates/inserts:  " + sqlex);
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
+			return;
+		}
+		for (AllPositionEntry entry : entries) {
+			poisonedEntry = entry;
+			pnt = new Point(entry.getLongitude(), entry.getLatitude());
+			geom = new PGgeometry(pnt);
+			pnt.setSrid(4326);
+			try {
+				updatePosition.clearParameters();
+				updatePosition.setString(1, entry.getDestination().toUpperCase());
+				updatePosition.setTimestamp(2, new java.sql.Timestamp(entry.getToi().getTime()));
+				updatePosition.setString(3, entry.getSymbolTable().toString());
+				updatePosition.setString(4, entry.getSymbol().toString());
+				updatePosition.setString(5, entry.getIgate());
+				updatePosition.setInt(6, entry.getAltitude());
+				updatePosition.setInt(7, entry.getPositionAmbiguity());
+				updatePosition.setArray(8, new PostgreSQLTextArray(entry.getDigis()));
+				updatePosition.setObject(9, geom);
+				updatePosition.setString(10, entry.getCallsign().toUpperCase());
+				rows = updatePosition.executeUpdate();
+			} catch (SQLException sqlex) {
+				System.err.println("Unable to update last position entry for " + poisonedEntry.getCallsign() + " :"
+						+ sqlex);
+				System.err.println(" Station was " + poisonedEntry.getCallsign() + ", or "
+						+ poisonedEntry.getBaseCall() + " - " + poisonedEntry.getSsid());
+			}
+			if (rows == 0) {
+				inserts++;
+				try {
+					insertPosition.clearParameters();
+					insertPosition = populateInsertStatement(insertPosition, entry, geom);
+					int result = insertPosition.executeUpdate();
+					if (result != 1) {
+						System.err.println("Error storing new position for " + entry.getCallsign());
+					}
+				} catch (SQLException sqlex) {
+					System.err.println("Unable to insert last position entry for " + poisonedEntry.getCallsign() + " :"
+							+ sqlex);
+					System.err.println(" Station was " + poisonedEntry.getCallsign() + ", or "
+							+ poisonedEntry.getBaseCall() + " - " + poisonedEntry.getSsid());
+				}
+			} else {
+				updates++;
+			}
+		}
+		try {
+			dbconn.close();
+		} catch (Exception ex) {
+		}
+		System.out.println(updates+" updates, "+inserts+" inserts.");
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * net.ab0oo.aprs.avrs.db.AVRSDao#saveLatestPosition(net.ab0oo.aprs.avrs
+	 * .models.AllPositionEntry)
+	 */
+	@Override
+	public void savePosition(AllPositionEntry entry) {
+		Connection dbconn = null;
+		PreparedStatement insertPosition = null;
+		try {
+			Point pnt = new Point(entry.getLongitude(), entry.getLatitude());
+			PGgeometry geom = new PGgeometry(pnt);
+			pnt.setSrid(4326);
+			dbconn = ds.getConnection();
+			insertPosition = dbconn.prepareStatement("insert into position_history "
+					+ " values (?,?,?,?,?,?,?,?,?,?,?,? )");
+			insertPosition = populateInsertStatement(insertPosition, entry, geom);
+			int result = insertPosition.executeUpdate();
+			if (result != 1) {
+				System.err.println("Error storing new position for " + entry.getCallsign());
+			}
+		} catch (SQLException sqlex) {
+			System.err.println("Unable to persist last position entry for " + entry.getCallsign() + " :" + sqlex);
+			System.err.println(" Station was " + entry.getCallsign() + ", or " + entry.getBaseCall() + " - "
+					+ entry.getSsid());
+		} finally {
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
+		}
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * net.ab0oo.aprs.avrs.db.AVRSDao#saveLatestPosition(net.ab0oo.aprs.avrs
+	 * .models.AllPositionEntry)
+	 */
+	@Override
+	public void savePositions(List<AllPositionEntry> entries) {
+		Connection dbconn = null;
+		PreparedStatement insertPosition = null;
+		AllPositionEntry poisonedEntry = new AllPositionEntry();
+		try {
+			Point pnt;
+			PGgeometry geom;
+			dbconn = ds.getConnection();
+			insertPosition = dbconn.prepareStatement("insert into position_history "
+					+ " values (?,?,?,?,?,?,?,?,?,?,?,? )");
+			for (AllPositionEntry entry : entries) {
+				poisonedEntry = entry;
+				pnt = new Point(entry.getLongitude(), entry.getLatitude());
+				geom = new PGgeometry(pnt);
+				pnt.setSrid(4326);
+				insertPosition = populateInsertStatement(insertPosition, entry, geom);
+				int result = insertPosition.executeUpdate();
+				if (result != 1) {
+					System.err.println("Error storing new position for " + entry.getCallsign());
+				}
+			}
+		} catch (SQLException sqlex) {
+			System.err.println("Unable to persist last position entry for " + poisonedEntry.getCallsign() + " :"
+					+ sqlex);
+			System.err.println(" Station was " + poisonedEntry.getCallsign() + ", or " + poisonedEntry.getBaseCall()
+					+ " - " + poisonedEntry.getSsid());
+		} finally {
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
+		}
+	}
+
+	@Override
+	public List<ReferencePoint> listClosestCities(Position position) {
 		Connection dbconn = null;
 		PreparedStatement testGeometry = null;
 		ResultSet rs = null;
@@ -311,23 +448,27 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 			dbconn = ds.getConnection();
 			String lat = Double.toString(position.getLatitude());
 			String lon = Double.toString(position.getLongitude());
-			String sql = "select accent_city, region, population, " +
-					"ST_distance_sphere(the_geom, geometryFromText('POINT("+lon+" "+lat+")',4326) ) as dist, " +
-					"degrees(azimuth(the_geom,geometryFromText('POINT("+lon+" "+lat+")',4326) )) as bearing " +
-					"from world_cities where population > 15000 order by dist asc limit 2";
-			//System.out.println(sql);
+			String sql = "select accent_city, region, population, "
+					+ "ST_distance_sphere(the_geom, geometryFromText('POINT(" + lon + " " + lat
+					+ ")',4326) ) as dist, " + "degrees(azimuth(the_geom,geometryFromText('POINT(" + lon + " " + lat
+					+ ")',4326) )) as bearing "
+					+ "from world_cities where population > 15000 order by dist asc limit 2";
+			// System.out.println(sql);
 			testGeometry = dbconn.prepareStatement(sql);
 			rs = testGeometry.executeQuery();
 			while (rs.next()) {
-				ReferencePoint rp = new ReferencePoint(rs.getString("accent_city"),rs.getString("region"),
-						rs.getDouble("bearing"), rs.getDouble("dist") );
+				ReferencePoint rp = new ReferencePoint(rs.getString("accent_city"), rs.getString("region"),
+						rs.getDouble("bearing"), rs.getDouble("dist"));
 				retlist.add(rp);
 			}
 		} catch (SQLException sqlex) {
 			System.err.println("SQL Exception:  " + sqlex);
-        } finally {
-            try { dbconn.close(); } catch ( Exception ex ) {}
-        }
+		} finally {
+			try {
+				dbconn.close();
+			} catch (Exception ex) {
+			}
+		}
 		return retlist;
 	}
 

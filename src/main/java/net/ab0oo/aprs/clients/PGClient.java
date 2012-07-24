@@ -52,6 +52,8 @@ import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 import net.ab0oo.aprs.avrs.db.AVRSDao;
 import net.ab0oo.aprs.avrs.db.jdbc.JdbcAVRSDao;
@@ -71,10 +73,11 @@ public class PGClient implements PacketListener {
 	static DecimalFormat df = new DecimalFormat("###.000000");
 	static String username = null, database = null, password = null, aprsFilter = null,
 			host = null, server = null, callsign = null, aprsPass = null;
-//	private PreparedStatement update = null;
+	static int maxCache = 200;
 	private Socket clientSocket = null;
     private DataOutputStream outToServer;
     private BufferedReader inFromServer;
+    private List<AllPositionEntry> entryCache = new ArrayList<AllPositionEntry>();
 	static int port = 10152, staleMs;
 	static boolean update = true;
 	private AVRSDao dao;
@@ -93,6 +96,7 @@ public class PGClient implements PacketListener {
 			database = config.getString("postgres.dbname");
 			password = config.getString("postgres.password");
 			host = config.getString("postgres.host");
+			maxCache = config.getInt("postgres.maxcache");
 			server = config.getString("aprsis.host");
 			port = config.getInt("aprsis.port");
 			callsign = config.getString("aprsis.callsign");
@@ -183,9 +187,17 @@ public class PGClient implements PacketListener {
 					entry.setPosition(p);
 					entry.setIgate(packet.getIgate());
 					if ( update ) { 
-					    dao.saveLatestPosition(entry);
+						entryCache.add(entry);
+						if ( entryCache.size() > maxCache  ) {
+							dao.saveLatestPositions(entryCache);
+							entryCache.clear();
+						}
 					} else {
-                        dao.savePosition(entry);
+						entryCache.add(entry);
+						if ( entryCache.size() > maxCache) {
+							dao.savePositions(entryCache);
+							entryCache.clear();
+						}
 					}
 				}
 			}

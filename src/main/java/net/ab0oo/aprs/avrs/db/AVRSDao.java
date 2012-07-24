@@ -42,7 +42,9 @@ public interface AVRSDao {
 	public AllPositionEntry getPosition( String callsign );
     public void setDataSource(DataSource ds );
     public void saveLatestPosition(AllPositionEntry entry);
+    public void saveLatestPositions(List<AllPositionEntry> entries);
     public void savePosition(AllPositionEntry entry);
+    public void savePositions(List<AllPositionEntry> entries);
     public List<ReferencePoint> listClosestCities(Position position);
 
 }
