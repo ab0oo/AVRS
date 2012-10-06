@@ -209,20 +209,20 @@ class AVRSServer implements PacketListener {
                     + mp.getTargetCallsign());
         } else if (messageBody.startsWith("?")) {
             if (mp.getMessageBody().trim().length() == 1) {
-                sendAck(sourceCall, mp.getMessageNumber());
+                sendAck("AVRS",sourceCall, mp.getMessageNumber());
                 sendClosestNode(sourceCall, sourceCall, '*');
             } else if (messageBody.length() == 2) {
                 // this is a transport-specific query. The user has asked for
                 // an echolink (?E), IRLP (?I), or AllStar (?A) node
-                sendAck(sourceCall, mp.getMessageNumber());
+                sendAck("AVRS", sourceCall, mp.getMessageNumber());
                 sendClosestNode(sourceCall, sourceCall, messageBody.charAt(1));
             } else {
                 // this is for a query on another station in the format ?N0CAL
-                sendAck(sourceCall, mp.getMessageNumber());
+                sendAck("AVRS",sourceCall, mp.getMessageNumber());
                 sendClosestNode(mp.getMessageBody().substring(1), sourceCall, '*');
             }
         } else {
-            sendAck(sourceCall, mp.getMessageNumber());
+            sendAck("AVRS",sourceCall, mp.getMessageNumber());
             System.out.println("Message body is \"" + mp.getMessageBody() + "\"");
             setupAvrsLink(sourceCall.toUpperCase(), mp.getMessageBody());
 
@@ -244,12 +244,12 @@ class AVRSServer implements PacketListener {
                     + mp.getTargetCallsign());
         } else {
             if (mp.getMessageBody().trim().length() == 1) {
-                sendAck(sourceCall, mp.getMessageNumber());
-                sendLocation(sourceCall, sourceCall, '*');
+                sendAck("LOCATE", sourceCall, mp.getMessageNumber());
+                sendLocation(sourceCall, sourceCall, '*', mp.getMessageNumber());
             } else {
                 // this is for a query on another station in the format ?N0CAL
-                sendAck(sourceCall, mp.getMessageNumber());
-                sendLocation(mp.getMessageBody(), sourceCall, '*');
+                sendAck("LOCATE", sourceCall, mp.getMessageNumber());
+                sendLocation(mp.getMessageBody(), sourceCall, '*', mp.getMessageNumber());
             }
         }
     }
@@ -272,7 +272,7 @@ class AVRSServer implements PacketListener {
         System.out.println(new Date() + ":  Found " + allPositions.size() + " valid SSIDs for " + callsign);
         // TODO This needs to actually do more to figure out WHICH station is message capable.
         // right now, it returns the callsign of the most RECENT SSID to transmit
-        if (allPositions.size() > 1) {
+        if (allPositions.size() > 0) {
             Collections.sort(allPositions);
             bestTarget = allPositions.get(0).getCallsign();
             System.out.println("Multiple choices for " + callsign + ", using " + bestTarget);
@@ -299,54 +299,61 @@ class AVRSServer implements PacketListener {
         }
         double freq = nodePair.getTargetNode().getFrequency();
         String tone = nodePair.getTargetNode().getTone();
-        String targetMessage = String.format("VOICE CALL from %s, PSE QSY %3.3fMHz T%-3s", sourceCall, freq, tone);
+        String targetMessage = String.format("VOICE CALL from %s, PSE QSY %3.3f MHz T%-3s", sourceCall, freq, tone);
         sendAndGetAck("AVRS", bestTarget, targetMessage);
         System.out.println(new Date() + ":  " + bestTarget + ">" + targetMessage);
         freq = nodePair.getSourceNode().getFrequency();
         tone = nodePair.getSourceNode().getTone();
         String type = nodePair.getSourceNode().getNodeType();
         int nodeId = nodePair.getTargetNode().getNode();
-        String sourceMessage = String.format("CALL %s on %3.3fMHz T%-3s %s node %d", bestTarget, freq, tone, type,
+        String sourceMessage = String.format("CALL %s on %3.3f MHz T%-3s %s node %d", bestTarget, freq, tone, type,
             nodeId);
         System.out.println(new Date() + ":  " + sourceCall + ">" + sourceMessage);
         sendAndGetAck("AVRS", sourceCall, sourceMessage);
     }
 
-    private void sendLocation(String callsign, String requestor, char nodeType) {
+    private void sendLocation(String callsign, String requestor, char nodeType, String msgNumber) {
         System.out.println(new Date() + ":  " + requestor + " wants to know the location of '" + callsign + "'");
-        Date lastPosition = dao.getLatestPosition(callsign);
-        if (lastPosition == null) {
-            System.err.println("Unkown last position for " + callsign);
+        List<AllPositionEntry> lastPositions = dao.getPositions(callsign);
+        if (lastPositions.size() < 1) {
+            System.out.println("Unkown last position for " + callsign);
             sendAndGetAck("LOCATE", requestor, "UNKNOWN POSITION FOR " + callsign);
             return;
         }
-        System.out.println(new Date() + ":  Timestamp of last position is " + lastPosition);
-        if (System.currentTimeMillis() - lastPosition.getTime() > staleMs) {
-            long elapsedTime = (System.currentTimeMillis() - lastPosition.getTime()) / 1000;
-            System.out.println(new Date() + ":  Last position from " + callsign + " is " + elapsedTime
-                    + " seconds old.");
-        }
-        AllPositionEntry lastPositionEntry = dao.getPosition(callsign);
-        if (lastPositionEntry != null) {
-            List<ReferencePoint> closestCities = dao.listClosestCities(lastPositionEntry.getPosition());
-            ReferencePoint closestCity = closestCities.get(0);
-            String alertString = callsign + " heard ";
-            Date lastHeard = lastPositionEntry.getToi();
-            System.out.println("lastHeard is " + lastPositionEntry.getToi());
-            if (lastHeard != null) {
-                alertString += (toDms(System.currentTimeMillis() - lastPositionEntry.getToi().getTime())) + " ago ";
+        for (AllPositionEntry lastPosition : lastPositions) {
+            // if the requestor is looking for a SPECIFIC SID, then skip entries unless
+            // their callsign matches the requested callsign exactly.  Otherwise, we'll return
+            // all known station positions for the requested callsign
+            if ( callsign.indexOf('-') > 0 && !lastPosition.getCallsign().equals(callsign)) {
+                continue;
             }
-            double distance = closestCity.getMetersDistance();
-            String units = "km ";
-            if (requestor.startsWith("A") || requestor.startsWith("G") || requestor.startsWith("K")
-                    || requestor.startsWith("N") || requestor.startsWith("W")) {
-                distance = Utilities.metersToMiles(distance);
-                units = "mi ";
+            System.out.println(new Date() + ":  Last position of "+lastPosition.getCallsign()+" at " 
+                    + lastPosition.getPosition().getTimestamp() +" at "+lastPosition.getPosition());
+            if (System.currentTimeMillis() - lastPosition.getToi().getTime() > staleMs) {
+                List<ReferencePoint> closestCities = dao.listClosestCities(lastPosition.getPosition());
+                ReferencePoint closestCity = closestCities.get(0);
+                String alertString = lastPosition.getCallsign() + " heard ";
+                Date lastHeard = lastPosition.getToi();
+                System.out.println("lastHeard is " + lastPosition.getToi());
+                if (lastHeard != null) {
+                    alertString += (toDms(System.currentTimeMillis() - lastPosition.getToi().getTime())) + " ago ";
+                }
+                double distance = closestCity.getMetersDistance();
+                String units = "km ";
+                if (requestor.startsWith("A") || requestor.startsWith("G") || requestor.startsWith("K")
+                        || requestor.startsWith("N") || requestor.startsWith("W")) {
+                    distance = Utilities.metersToMiles(distance);
+                    units = "mi ";
+                } else {
+                    distance = Utilities.metersToKilometers(distance);
+                }
+                alertString += distFmt.format(distance) + units;
+                alertString += Utilities.degressToCardinal(closestCity.getBearingTo()) + " of ";
+                alertString += closestCity.getCity() + ", " + closestCity.getRegion();
+                sendAndGetAck("LOCATE", requestor, alertString);
+            } else {
+                System.out.println("Message from "+lastPosition.getToi()+" too old to be valid.");
             }
-            alertString += distFmt.format(distance) + units;
-            alertString += Utilities.degressToCardinal(closestCity.getBearingTo()) + " of ";
-            alertString += closestCity.getCity() + ", " + closestCity.getRegion();
-            sendAndGetAck("LOCATE", requestor, alertString);
         }
     }
 
@@ -369,33 +376,41 @@ class AVRSServer implements PacketListener {
             System.out.println(new Date() + ": Interested only in " + nodeType + " nodes");
         }
         // first we set up the acknowledgment
-        Date lastPosition = dao.getLatestPosition(callsign);
-        if (lastPosition == null) {
+        List<AllPositionEntry> lastPositions = dao.getPositions(callsign);
+        if (lastPositions.size() < 1) {
+            System.out.println("Unkown last position for " + callsign);
+            sendAndGetAck("AVRS", requestor, "UNKNOWN POSITION FOR " + callsign);
+            return;
+        }
+
+        if (lastPositions.size() == 0 ) {
             System.err.println("Unkown last position for " + callsign);
             sendAndGetAck("AVRS", requestor, "UNKNOWN POSITION FOR " + callsign);
             return;
         }
-        System.out.println(new Date() + ":  Timestamp of last position is " + lastPosition);
-        if (System.currentTimeMillis() - lastPosition.getTime() > staleMs) {
-            long elapsedTime = (System.currentTimeMillis() - lastPosition.getTime()) / 1000;
+        AllPositionEntry lastPosition = lastPositions.get(0);
+        System.out.println(new Date() + ":  Timestamp of last position is " + lastPosition.getToi());
+        if (System.currentTimeMillis() - lastPosition.getToi().getTime() > staleMs) {
+            long elapsedTime = (System.currentTimeMillis() - lastPosition.getToi().getTime()) / 1000;
             System.out.println(new Date() + ":  Last position from " + callsign + " is " + elapsedTime
                     + " seconds old.");
         }
-        TreeSet<LinkNode> nodes = dao.getNodes(callsign);
+        String targetCallsign = lastPosition.getCallsign();
+        TreeSet<LinkNode> nodes = dao.getNodes(targetCallsign);
         int gwCount = 0;
         for (LinkNode node : nodes) {
             if (nodeType != '*' && node.getNodeType().charAt(0) != nodeType)
                 continue;
             gwCount++;
             if (gwCount < 3) {
-                String comment = String.format("%3.3fMHz T%-3s %s#%d %2.2f miles", node.getFrequency(), node.getTone(),
+                String comment = String.format("%3.3f MHz T%-3s %s#%d %2.2f miles", node.getFrequency(), node.getTone(),
                     node.getNodeType(), node.getNode(), node.getDistance());
                 // Position p = new Position(node.getLatitude(), node.getLongitude(), 0, '/', 'n');
                 // ObjectPacket op = new ObjectPacket(node.getNodeType() + "#" + node.getNode(), true, p, comment);
                 if (gwCount == 1) {
                     if (node.getDistance() > maxLinkDistance) {
-                        System.out.println(new Date() + ":  " + callsign + " too far away from a working VOIP node");
-                        comment = "SRY, " + callsign + " >50 miles from closest VOIP node";
+                        System.out.println(new Date() + ":  " + targetCallsign + " too far away from a working VOIP node");
+                        comment = "SRY, " + targetCallsign + " >50 miles from closest VOIP node";
                     }
                     sendAndGetAck("AVRS", requestor, comment);
                 }
@@ -432,16 +447,20 @@ class AVRSServer implements PacketListener {
     }
 
     @SuppressWarnings("unused")
-    private void sendNoAck(InformationField infoField) {
-        APRSPacket outgoingPacket = new APRSPacket("AVRS", "APZ013", null, infoField);
+    private void sendNoAck(String source, InformationField infoField) {
+        APRSPacket outgoingPacket = new APRSPacket(source, "APZ013", null, infoField);
         System.out.println(new Date() + ":  Sending: " + outgoingPacket.toString());
         Runnable msgThread = new ResponseThread(outgoingPacket, 3, 10, outToServer, timer);
         timer.schedule(msgThread, 0L, TimeUnit.SECONDS);
     }
 
-    private void sendAck(String callsign, String messageNumber) {
+    private void sendAck(String source, String callsign, String messageNumber) {
+        if ( messageNumber.charAt(2) == '}' ) {
+            System.out.println("Requestor is Reply-ack capable, not sending standalone ack.");
+            //return;
+        }
         System.out.println("Sending ACK to " + callsign + " for MSG NUM " + messageNumber);
-        ConversationThread ackThread = new AckThread(true, callsign, messageNumber, 3, outToServer, timer);
+        ConversationThread ackThread = new AckThread(true, source, callsign, messageNumber, 3, outToServer, timer);
         timer.schedule(ackThread, 0L, TimeUnit.SECONDS);
     }
 

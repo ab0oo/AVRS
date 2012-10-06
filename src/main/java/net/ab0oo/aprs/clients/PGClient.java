@@ -181,6 +181,7 @@ public class PGClient implements PacketListener {
 				//if ( p.getLongitude() > -80.95 || p.getLongitude() < -85.6) { return; }
 				if (p != null) {
 					AllPositionEntry entry = new AllPositionEntry();
+					entry.setDti(packet.getDti());
 					entry.setCallsign(packet.getSourceCall());
 					entry.setDestination(packet.getDestinationCall());
 					entry.setDigis(packet.getDigipeaters());

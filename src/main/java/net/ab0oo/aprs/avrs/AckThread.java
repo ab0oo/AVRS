@@ -36,10 +36,12 @@ public class AckThread extends ConversationThread implements Runnable {
 
     private String   recipient;
     private String   msgNumber;
+    private String   source;
     private boolean  ack;
 
-    public AckThread(boolean ack, String recipient, String msgNumber, int count, DataOutputStream stream, ScheduledExecutorService timer) {
+    public AckThread(boolean ack, String source, String recipient, String msgNumber, int count, DataOutputStream stream, ScheduledExecutorService timer) {
         super();
+        this.source = source;
         this.recipient = recipient;
         this.msgNumber = msgNumber;
         this.count = count;
@@ -56,7 +58,7 @@ public class AckThread extends ConversationThread implements Runnable {
     @Override
     public void run() {
         MessagePacket mp = new MessagePacket(recipient, (ack ? "ack" : "rej"), msgNumber);
-        APRSPacket outgoingPacket = new APRSPacket("AVRS", "APZ013", null, mp);
+        APRSPacket outgoingPacket = new APRSPacket(source, "APZ013", null, mp);
         if (count <= 0) {
             System.out.println("Completed sending acks for msg "+msgNumber+" to "+recipient);
             return;

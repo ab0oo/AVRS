@@ -33,6 +33,7 @@ import java.util.TreeSet;
 import net.ab0oo.aprs.avrs.LinkNode;
 import net.ab0oo.aprs.avrs.db.AVRSDao;
 import net.ab0oo.aprs.avrs.models.AllPositionEntry;
+import net.ab0oo.aprs.parser.APRSPacket;
 import net.ab0oo.aprs.parser.Position;
 import net.ab0oo.aprs.avrs.models.ReferencePoint;
 
@@ -45,6 +46,18 @@ import org.postgis.Point;
  * 
  */
 public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
+    
+    private static final String updatePositionQuery =  "update all_positions set " +
+    		                                           "destination=?, toi=?, symbol_table=?," +
+    		                                           "symbol=?, igate=?, altitude=?, pos_ambiguity=?, " +
+    		                                           "digis=?, position=?, dti=? " +
+    		                                           "where upper(callsign) = ?";
+    private static final String insertPositionQuery =  "insert into all_positions " +
+                                                       "(callsign,basecall,ssid,destination,toi," +
+                                                       "symbol_table,symbol,igate," +
+                                                       "position,altitude,pos_ambiguity,digis,dti) " +
+                                                       " values (?,?,?,?,?,?,?,?,?,?,?,?,? )";
+
 
 	@Override
 	public TreeSet<LinkNode> getNodes(String callsign) {
@@ -161,7 +174,9 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 		}
 		return entry;
 	}
-
+/**
+ * Return a list of all positions for a base-callsign, by SSID
+ */
 	@Override
 	public List<AllPositionEntry> getPositions(String callsign) {
 		List<AllPositionEntry> positionList = new ArrayList<AllPositionEntry>();
@@ -170,19 +185,27 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 		ResultSet rs = null;
 		try {
 			dbconn = ds.getConnection();
-			findPosition = dbconn.prepareStatement("select * from all_positions where upper(callsign)=?");
-			findPosition.setString(1, callsign.toUpperCase());
+			findPosition = dbconn.prepareStatement("select * from all_positions where upper(basecall)=upper(?) " +
+					"order by toi desc");
+			findPosition.setString(1, APRSPacket.getBaseCall(callsign.toUpperCase()));
 			rs = findPosition.executeQuery();
 			while (rs.next()) {
 				AllPositionEntry entry = new AllPositionEntry();
 				entry.setDestination(rs.getString("destination"));
 				entry.setIgate(rs.getString("igate"));
-				entry.setCallsign(callsign);
+				entry.setCallsign(rs.getString("callsign"));
+				String dtiString = rs.getString("dti");
+				if ( dtiString == null || dtiString.length() < 1) {
+				    entry.setDti(' ');
+				} else {
+				    entry.setDti(dtiString.charAt(0));
+				}
 				Position p = new Position();
 				p.setSymbolTable(rs.getString("symbol_table").charAt(0));
 				p.setSymbolCode((char) rs.getString("symbol").charAt(0));
 				p.setAltitude(rs.getInt("altitude"));
 				p.setPositionAmbiguity(rs.getInt("pos_ambiguity"));
+                p.setTimestamp(new java.util.Date(rs.getTimestamp("toi").getTime()));
 				PGgeometry geom = (PGgeometry) rs.getObject("position");
 				Geometry g = geom.getGeometry();
 				Point pnt = g.getPoint(0);
@@ -216,6 +239,7 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 			ps.setInt(10, entry.getAltitude());
 			ps.setInt(11, entry.getPositionAmbiguity());
 			ps.setArray(12, new PostgreSQLTextArray(entry.getDigis()));
+			ps.setString(13, Character.toString(entry.getDti()));
 			int result = ps.executeUpdate();
 			if (result != 1) {
 				System.err.println("Error storing new position for " + entry.getCallsign());
@@ -244,8 +268,7 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 			PGgeometry geom = new PGgeometry(pnt);
 			pnt.setSrid(4326);
 			dbconn = ds.getConnection();
-			updatePosition = dbconn.prepareStatement("update all_positions set destination=?, toi=?, symbol_table=?,"
-					+ "symbol=?, igate=?, altitude=?, pos_ambiguity=?, digis=?, position=? where upper(callsign) = ?");
+			updatePosition = dbconn.prepareStatement(updatePositionQuery);
 			updatePosition.setString(1, entry.getDestination().toUpperCase());
 			updatePosition.setTimestamp(2, new java.sql.Timestamp(entry.getToi().getTime()));
 			updatePosition.setString(3, entry.getSymbolTable().toString());
@@ -255,12 +278,12 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 			updatePosition.setInt(7, entry.getPositionAmbiguity());
 			updatePosition.setArray(8, new PostgreSQLTextArray(entry.getDigis()));
 			updatePosition.setObject(9, geom);
-			updatePosition.setString(10, entry.getCallsign().toUpperCase());
+			updatePosition.setString(10, Character.toString(entry.getDti()));
+			updatePosition.setString(11, entry.getCallsign().toUpperCase());
 			int rows = updatePosition.executeUpdate();
 
 			if (rows == 0) {
-				insertPosition = dbconn.prepareStatement("insert into all_positions "
-						+ " values (?,?,?,?,?,?,?,?,?,?,?,? )");
+				insertPosition = dbconn.prepareStatement(insertPositionQuery);
 				insertPosition = populateInsertStatement(insertPosition, entry, geom);
 				int result = insertPosition.executeUpdate();
 				if (result != 1) {
@@ -300,9 +323,10 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 			System.out.print(new Date()+":  Updating " + entries.size() + " positions in the DB...");
 			dbconn = ds.getConnection();
 			updatePosition = dbconn.prepareStatement("update all_positions set destination=?, toi=?, symbol_table=?,"
-					+ "symbol=?, igate=?, altitude=?, pos_ambiguity=?, digis=?, position=? where upper(callsign) = ?");
+					+ "symbol=?, igate=?, altitude=?, pos_ambiguity=?, digis=?, position=?, dti=? " 
+			        + "where upper(callsign) = ?");
 			insertPosition = dbconn.prepareStatement("insert into all_positions "
-					+ " values (?,?,?,?,?,?,?,?,?,?,?,? )");
+					+ " values (?,?,?,?,?,?,?,?,?,?,?,?,? )");
 		} catch (SQLException sqlex) {
 			System.err.println("Unable to prepare statements for DB updates/inserts:  " + sqlex);
 			try {
@@ -327,7 +351,8 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 				updatePosition.setInt(7, entry.getPositionAmbiguity());
 				updatePosition.setArray(8, new PostgreSQLTextArray(entry.getDigis()));
 				updatePosition.setObject(9, geom);
-				updatePosition.setString(10, entry.getCallsign().toUpperCase());
+				updatePosition.setString(10, Character.toString(entry.getDti()));
+				updatePosition.setString(11, entry.getCallsign().toUpperCase());
 				rows = updatePosition.executeUpdate();
 			} catch (SQLException sqlex) {
 				System.err.println("Unable to update last position entry for " + poisonedEntry.getCallsign() + " :"
@@ -377,8 +402,7 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 			PGgeometry geom = new PGgeometry(pnt);
 			pnt.setSrid(4326);
 			dbconn = ds.getConnection();
-			insertPosition = dbconn.prepareStatement("insert into position_history "
-					+ " values (?,?,?,?,?,?,?,?,?,?,?,? )");
+			insertPosition = dbconn.prepareStatement(insertPositionQuery);
 			insertPosition = populateInsertStatement(insertPosition, entry, geom);
 			int result = insertPosition.executeUpdate();
 			if (result != 1) {
@@ -412,8 +436,7 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 			Point pnt;
 			PGgeometry geom;
 			dbconn = ds.getConnection();
-			insertPosition = dbconn.prepareStatement("insert into position_history "
-					+ " values (?,?,?,?,?,?,?,?,?,?,?,? )");
+			insertPosition = dbconn.prepareStatement(insertPositionQuery);
 			for (AllPositionEntry entry : entries) {
 				poisonedEntry = entry;
 				pnt = new Point(entry.getLongitude(), entry.getLatitude());
@@ -470,6 +493,32 @@ public class JdbcAVRSDao extends BaseJdbcDAO implements AVRSDao {
 			}
 		}
 		return retlist;
+	}
+	
+	@Override
+	public List<String> getAllCallsignsForBase(String baseCall) {
+        Connection dbconn = null;
+        PreparedStatement testGeometry = null;
+        ResultSet rs = null;
+        ArrayList<String> retlist = new ArrayList<String>();
+        try {
+            dbconn = ds.getConnection();
+            String sql = "select callsign from all_positions where basecall=? order by toi desc";
+            testGeometry = dbconn.prepareStatement(sql);
+            rs = testGeometry.executeQuery();
+            while (rs.next()) {
+                retlist.add(rs.getString("callsign"));
+            }
+        } catch (SQLException sqlex) {
+            System.err.println("SQL Exception:  " + sqlex);
+        } finally {
+            try {
+                dbconn.close();
+            } catch (Exception ex) {
+            }
+        }
+        return retlist;
+	    
 	}
 
 }

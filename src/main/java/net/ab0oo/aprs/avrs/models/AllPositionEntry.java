@@ -36,6 +36,7 @@ public class AllPositionEntry implements Serializable, Comparable<AllPositionEnt
 	private String callsign;
 	private String destination;
 	private String igate;
+	private char   dti;
 	private String[] digis = { null, null, null, null, null };
 	private Position position = new Position();
 
@@ -232,5 +233,13 @@ public class AllPositionEntry implements Serializable, Comparable<AllPositionEnt
         if ( this.getPosition().getTimestamp().getTime() < o.getPosition().getTimestamp().getTime() ) return -1;
         if ( this.getPosition().getTimestamp().getTime() > o.getPosition().getTimestamp().getTime() ) return 1;
         return 0;
+    }
+
+    public final char getDti() {
+        return dti;
+    }
+
+    public final void setDti(char dti) {
+        this.dti = dti;
     }
 }

@@ -46,5 +46,5 @@ public interface AVRSDao {
     public void savePosition(AllPositionEntry entry);
     public void savePositions(List<AllPositionEntry> entries);
     public List<ReferencePoint> listClosestCities(Position position);
-
+    public List<String> getAllCallsignsForBase(String baseCall);
 }
